@@ -1,49 +1,37 @@
 "use client";
 
 import { useRef, useState } from "react";
-
-type RecognitionResult = { length: number; [index: number]: { 0: { transcript: string } } };
-type RecognitionEvent = { results: RecognitionResult };
-type Recognition = {
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: ((event: RecognitionEvent) => void) | null;
-  onerror: (() => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-type RecognitionConstructor = new () => Recognition;
-
-function getRecognitionConstructor() {
-  const browser = window as unknown as { SpeechRecognition?: RecognitionConstructor; webkitSpeechRecognition?: RecognitionConstructor };
-  return browser.SpeechRecognition || browser.webkitSpeechRecognition;
-}
+import {
+  INITIAL_TRANSCRIPT,
+  UNAVAILABLE_TRANSCRIPT,
+  countWords,
+  getRecognitionConstructor,
+  joinTranscript,
+  statusAfterEnd,
+  type Recognition,
+  type Status,
+} from "@/lib/speech";
 
 export default function Home() {
-  const [transcript, setTranscript] = useState("Click start, speak a sentence, and let the browser set it down here.");
-  const [status, setStatus] = useState("READY");
+  const [transcript, setTranscript] = useState(INITIAL_TRANSCRIPT);
+  const [status, setStatus] = useState<Status>("READY");
   const [copied, setCopied] = useState(false);
   const recognition = useRef<Recognition | null>(null);
   const isListening = status === "LISTENING";
 
   function start() {
-    const Constructor = getRecognitionConstructor();
+    const Constructor = getRecognitionConstructor(window);
     if (!Constructor) {
       setStatus("UNAVAILABLE");
-      setTranscript("SpeechRecognition is not available in this browser. Try Chrome or Edge with microphone permission.");
+      setTranscript(UNAVAILABLE_TRANSCRIPT);
       return;
     }
     const nextRecognition = new Constructor();
     nextRecognition.continuous = true;
     nextRecognition.interimResults = true;
-    nextRecognition.onresult = (event) => {
-      let nextText = "";
-      for (let index = 0; index < event.results.length; index += 1) nextText += `${event.results[index][0].transcript} `;
-      setTranscript(nextText.trim());
-    };
+    nextRecognition.onresult = (event) => setTranscript(joinTranscript(event.results));
     nextRecognition.onerror = () => setStatus("ERROR");
-    nextRecognition.onend = () => setStatus((current) => current === "LISTENING" ? "STOPPED" : current);
+    nextRecognition.onend = () => setStatus(statusAfterEnd);
     recognition.current = nextRecognition;
     nextRecognition.start();
     setStatus("LISTENING");
@@ -84,7 +72,7 @@ export default function Home() {
       <section className="voice-transcript" aria-live="polite">
         <div className="voice-transcript-head"><div><span>TRANSCRIPT / LIVE PAPER</span><h2>What was said.</h2></div><button type="button" onClick={copyTranscript}>{copied ? "Copied" : "Copy transcript"}</button></div>
         <p className="voice-paper">{transcript}</p>
-        <div className="voice-paper-meta"><span>{transcript.split(/\s+/).filter(Boolean).length} words</span><button type="button" onClick={() => { setTranscript(""); setStatus("READY"); }}>Clear paper</button></div>
+        <div className="voice-paper-meta"><span>{countWords(transcript)} words</span><button type="button" onClick={() => { setTranscript(""); setStatus("READY"); }}>Clear paper</button></div>
       </section>
 
       <footer className="voice-footer"><span>METHOD / Web SpeechRecognition API</span><span>LIMIT / browser support and microphone permission apply</span></footer>
