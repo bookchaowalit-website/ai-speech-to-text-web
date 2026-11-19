@@ -15,7 +15,7 @@ export type RecognitionConstructor = new () => Recognition;
 
 export type Status = "READY" | "LISTENING" | "STOPPED" | "ERROR" | "UNAVAILABLE";
 
-export const INITIAL_TRANSCRIPT = "Click start, speak a sentence, and let the browser set it down here.";
+export const INITIAL_TRANSCRIPT = "No transcript yet. Press Start recording, speak a sentence, and the browser sets it down here.";
 export const UNAVAILABLE_TRANSCRIPT =
   "SpeechRecognition is not available in this browser. Try Chrome or Edge with microphone permission.";
 

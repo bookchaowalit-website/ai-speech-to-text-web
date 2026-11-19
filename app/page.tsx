@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { AppFoot, AppTop, Pill, type Tone } from "@/components/app-shell";
 import {
   INITIAL_TRANSCRIPT,
   UNAVAILABLE_TRANSCRIPT,
@@ -12,18 +13,27 @@ import {
   type Status,
 } from "@/lib/speech";
 
+const SOURCE = "https://github.com/bookchaowalit-website/ai-speech-to-text-web";
+const STATUS: Record<Status, { tone: Tone; text: string }> = {
+  READY: { tone: "grey", text: "Ready" },
+  LISTENING: { tone: "green", text: "Listening" },
+  STOPPED: { tone: "grey", text: "Stopped" },
+  ERROR: { tone: "red", text: "Error" },
+  UNAVAILABLE: { tone: "amber", text: "Not supported here" },
+};
+
 export default function Home() {
-  const [transcript, setTranscript] = useState(INITIAL_TRANSCRIPT);
+  const [transcript, setTranscript] = useState("");
   const [status, setStatus] = useState<Status>("READY");
-  const [copied, setCopied] = useState(false);
+  const [note, setNote] = useState("");
   const recognition = useRef<Recognition | null>(null);
   const isListening = status === "LISTENING";
+  const words = countWords(transcript);
 
   function start() {
     const Constructor = getRecognitionConstructor(window);
     if (!Constructor) {
       setStatus("UNAVAILABLE");
-      setTranscript(UNAVAILABLE_TRANSCRIPT);
       return;
     }
     const nextRecognition = new Constructor();
@@ -33,6 +43,7 @@ export default function Home() {
     nextRecognition.onerror = () => setStatus("ERROR");
     nextRecognition.onend = () => setStatus(statusAfterEnd);
     recognition.current = nextRecognition;
+    setNote("");
     nextRecognition.start();
     setStatus("LISTENING");
   }
@@ -45,37 +56,62 @@ export default function Home() {
   async function copyTranscript() {
     try {
       await navigator.clipboard.writeText(transcript);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
-    } catch { setCopied(false); }
+      setNote("Transcript copied.");
+    } catch {
+      setNote("Copy was blocked by the browser. Select the text and copy it manually.");
+    }
   }
 
+  function clear() {
+    setTranscript("");
+    setNote("");
+    if (!isListening) setStatus("READY");
+  }
+
+  const state = STATUS[status];
+
   return (
-    <main className="voice-shell">
-      <nav className="voice-nav" aria-label="Voice Booth">
-        <span className="voice-mark">VOICE / BOOTH</span>
-        <span>BROWSER MICROPHONE · NO CLOUD KEY</span>
-      </nav>
+    <div className="as">
+      <a className="as-skip" href="#recorder">Skip to the recorder</a>
+      <AppTop name="Speech to Text" tagline="Browser speech recognition" />
 
-      <header className="voice-hero">
-        <div><h1>Let the browser catch the room.</h1><p>A quiet speech-to-text booth for one take at a time. The transcript is created by the browser&apos;s native recognition surface.</p></div>
-        <div className={`voice-status voice-status-${status.toLowerCase()}`}><span className="voice-status-dot" />{status}</div>
-      </header>
+      <main className="as-page">
+        <div className="as-intro">
+          <p className="as-eyebrow">One take at a time</p>
+          <h1>Let the browser catch the room.</h1>
+          <p>Press Start, speak, and your browser&apos;s own speech recognition writes it down. No API key is used.</p>
+        </div>
 
-      <section className="voice-console" aria-label="Speech recorder">
-        <div className="voice-console-top"><span>TAKE 001</span><span>{isListening ? "CAPTURING VOICE" : "READY FOR A TAKE"}</span></div>
-        <div className="voice-wave" aria-hidden="true">{Array.from({ length: 28 }, (_, index) => <span key={index} style={{ height: `${18 + ((index * 17) % 54)}%` }} />)}</div>
-        <div className="voice-controls"><button type="button" className="voice-start" onClick={start} disabled={isListening}><span />Start recording</button><button type="button" className="voice-stop" onClick={stop} disabled={!isListening}>Stop</button></div>
-        <p className="voice-console-note">Give the browser microphone access when prompted. Stop ends the current recognition session.</p>
-      </section>
+        <section className="as-composer st-card" id="recorder" tabIndex={-1} aria-labelledby="recorder-heading">
+          <div className="st-foot">
+            <h2 id="recorder-heading">Recorder</h2>
+            <span role="status"><Pill tone={state.tone}>{state.text}</Pill></span>
+          </div>
+          <div className="st-controls">
+            <button type="button" className="as-button" onClick={start} disabled={isListening}>{status === "STOPPED" ? "Record again" : "Start recording"}</button>
+            <button type="button" className="as-plain st-stop" onClick={stop} disabled={!isListening}>Stop</button>
+          </div>
+          {status === "UNAVAILABLE" ? <p className="st-callout">{UNAVAILABLE_TRANSCRIPT}</p> : null}
+          {status === "ERROR" ? <p className="st-callout" data-tone="red">Recognition stopped with an error. Check that the microphone is allowed for this site, then start again.</p> : null}
+          <p className="st-meta">Allow microphone access when the browser asks. Stop ends the current take. Recognition runs in the browser; some browsers, Chrome for one, send the audio to their own speech service to do it.</p>
+        </section>
 
-      <section className="voice-transcript" aria-live="polite">
-        <div className="voice-transcript-head"><div><span>TRANSCRIPT / LIVE PAPER</span><h2>What was said.</h2></div><button type="button" onClick={copyTranscript}>{copied ? "Copied" : "Copy transcript"}</button></div>
-        <p className="voice-paper">{transcript}</p>
-        <div className="voice-paper-meta"><span>{countWords(transcript)} words</span><button type="button" onClick={() => { setTranscript(""); setStatus("READY"); }}>Clear paper</button></div>
-      </section>
+        <section className="as-composer st-card" aria-labelledby="transcript-heading">
+          <h2 id="transcript-heading">Transcript</h2>
+          <p className="st-paper" aria-live="polite" data-empty={transcript ? undefined : "true"}>{transcript || (isListening ? "Listening… start speaking." : INITIAL_TRANSCRIPT)}</p>
+          <div className="st-foot">
+            <span className="st-meta">{words} {words === 1 ? "word" : "words"}</span>
+            <div className="st-actions">
+              <button type="button" className="as-plain" onClick={copyTranscript} disabled={!transcript}>Copy transcript</button>
+              <button type="button" className="as-plain" onClick={clear} disabled={!transcript}>Clear</button>
+            </div>
+          </div>
+          {note ? <p className="st-meta" role="status">{note}</p> : null}
+        </section>
 
-      <footer className="voice-footer"><span>METHOD / Web SpeechRecognition API</span><span>LIMIT / browser support and microphone permission apply</span></footer>
-    </main>
+        <p className="as-note">Method: the Web Speech API (SpeechRecognition). Browser support and microphone permission apply. Nothing is stored; the transcript is gone when you leave the page.</p>
+      </main>
+      <AppFoot source={SOURCE} />
+    </div>
   );
 }

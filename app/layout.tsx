@@ -1,32 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
+// The font variable sits on <html>: the App shell tokens live on :root and read it from there.
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+const title = "Speech to Text | Bookchaowalit";
+const description = "Turn speech into text with your browser's built-in speech recognition. No API key, nothing stored.";
 
 export const metadata: Metadata = {
-  title: "Voice / Booth | Bookchaowalit",
-  description: "Browser SpeechRecognition demo.",
-  keywords: ["speech-to-text", "tool"],
+  title,
+  description,
   authors: [{ name: "Bookchaowalit", url: "https://bookchaowalit.com" }],
   creator: "Bookchaowalit",
-  metadataBase: new URL("https://bookchaowalit.com"),
-  openGraph: {
-    type: "website",
-    title: "Speech to Text | Bookchaowalit",
-    description: "Browser SpeechRecognition demo.",
-    siteName: "Bookchaowalit",
-  },
+  metadataBase: new URL(SITE_URL),
+  alternates: { canonical: "/" },
+  openGraph: { type: "website", title, description, siteName: "Bookchaowalit" },
   robots: { index: true, follow: true },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {children}
-      </body>
+    <html lang="en" className={geistSans.variable}>
+      <body>{children}</body>
     </html>
   );
 }
