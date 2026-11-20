@@ -26,8 +26,10 @@ export default function Home() {
   const [transcript, setTranscript] = useState("");
   const [status, setStatus] = useState<Status>("READY");
   const [note, setNote] = useState("");
-  // Bumped by every transcript change and every copy: a change cancels the copy status, and only the latest copy reports.
+  // Bumped by every real transcript change, Clear, new take and copy: a change cancels the copy status, and only
+  // the latest copy reports. A result that repeats the shown text (interim confirmed as final) changes nothing.
   const copyEpoch = useRef(0);
+  const shown = useRef("");
   const cancelCopy = () => {
     copyEpoch.current += 1;
     setNote("");
@@ -46,8 +48,11 @@ export default function Home() {
     nextRecognition.continuous = true;
     nextRecognition.interimResults = true;
     nextRecognition.onresult = (event) => {
+      const next = joinTranscript(event.results);
+      if (next === shown.current) return;
+      shown.current = next;
       cancelCopy();
-      setTranscript(joinTranscript(event.results));
+      setTranscript(next);
     };
     nextRecognition.onerror = () => setStatus("ERROR");
     nextRecognition.onend = () => setStatus(statusAfterEnd);
@@ -74,6 +79,7 @@ export default function Home() {
   }
 
   function clear() {
+    shown.current = "";
     setTranscript("");
     cancelCopy();
     if (!isListening) setStatus("READY");
@@ -124,7 +130,7 @@ export default function Home() {
           <p className="st-meta st-copy-status" role="status">{note}</p>
         </section>
 
-        <p className="as-note">Method: the Web Speech API (SpeechRecognition). Browser support and microphone permission apply. This app stores and sends nothing; the transcript stays only in this tab until you clear it or close the tab.</p>
+        <p className="as-note">Method: the Web Speech API (SpeechRecognition). Browser support and microphone permission apply. This app does not store or send your audio or transcript; the transcript stays only in this tab until you clear it or close the tab.</p>
       </main>
       <AppFoot source={SOURCE} />
     </div>

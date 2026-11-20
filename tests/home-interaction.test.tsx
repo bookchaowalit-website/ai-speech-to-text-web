@@ -134,7 +134,8 @@ describe("recorder", () => {
   it("does not promise the transcript is gone when you leave the page", () => {
     mount();
     expect(host.textContent).not.toContain("gone when you leave the page");
-    expect($(".as-note")!.textContent).toContain("stores and sends nothing");
+    expect($(".as-note")!.textContent).toContain("does not store or send your audio or transcript");
+    expect($(".as-note")!.textContent).not.toContain("sends nothing");
   });
 
   it("does not bring an old Copied back when the same words are dictated after Clear", async () => {
@@ -166,6 +167,21 @@ describe("recorder", () => {
     await act(async () => { finishers[1](); });
     expect($(".st-copy-status")!.textContent).toBe("Transcript copied.");
     await act(async () => { failers[0](new Error("late")); });
+    expect($(".st-copy-status")!.textContent).toBe("Transcript copied.");
+  });
+
+  it("keeps a pending copy result when the browser repeats the same transcript", async () => {
+    (window as { SpeechRecognition?: unknown }).SpeechRecognition = FakeRecognition;
+    mount();
+    press(button("Start recording"));
+    const one = { results: { length: 1, 0: { 0: { transcript: "one" } } } };
+    act(() => last().onresult!(one));
+    let finish!: () => void;
+    const writeText = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    act(() => { button("Copy transcript").click(); });
+    act(() => last().onresult!(one));
+    await act(async () => { finish(); });
     expect($(".st-copy-status")!.textContent).toBe("Transcript copied.");
   });
 });
