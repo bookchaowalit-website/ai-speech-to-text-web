@@ -25,7 +25,8 @@ const STATUS: Record<Status, { tone: Tone; text: string }> = {
 export default function Home() {
   const [transcript, setTranscript] = useState("");
   const [status, setStatus] = useState<Status>("READY");
-  const [note, setNote] = useState("");
+  // A copy result belongs to the transcript that was copied; it is hidden once the transcript changes.
+  const [copied, setCopied] = useState<{ text: string; message: string } | null>(null);
   const recognition = useRef<Recognition | null>(null);
   const isListening = status === "LISTENING";
   const words = countWords(transcript);
@@ -43,7 +44,7 @@ export default function Home() {
     nextRecognition.onerror = () => setStatus("ERROR");
     nextRecognition.onend = () => setStatus(statusAfterEnd);
     recognition.current = nextRecognition;
-    setNote("");
+    setCopied(null);
     nextRecognition.start();
     setStatus("LISTENING");
   }
@@ -54,17 +55,19 @@ export default function Home() {
   }
 
   async function copyTranscript() {
+    const text = transcript;
     try {
-      await navigator.clipboard.writeText(transcript);
-      setNote("Transcript copied.");
+      await navigator.clipboard.writeText(text);
+      setCopied({ text, message: "Transcript copied." });
     } catch {
-      setNote("Copy was blocked by the browser. Select the text and copy it manually.");
+      setCopied({ text, message: "Copy was blocked by the browser. Select the text and copy it manually." });
     }
   }
+  const note = copied && copied.text === transcript ? copied.message : "";
 
   function clear() {
     setTranscript("");
-    setNote("");
+    setCopied(null);
     if (!isListening) setStatus("READY");
   }
 
@@ -91,8 +94,11 @@ export default function Home() {
             <button type="button" className="as-button" onClick={start} disabled={isListening}>{status === "STOPPED" ? "Record again" : "Start recording"}</button>
             <button type="button" className="as-plain st-stop" onClick={stop} disabled={!isListening}>Stop</button>
           </div>
-          {status === "UNAVAILABLE" ? <p className="st-callout">{UNAVAILABLE_TRANSCRIPT}</p> : null}
-          {status === "ERROR" ? <p className="st-callout" data-tone="red">Recognition stopped with an error. Check that the microphone is allowed for this site, then start again.</p> : null}
+          {/* Always rendered, so the fix (try Chrome or Edge, allow the microphone) is announced with the status. */}
+          <div className="st-callouts" aria-live="polite">
+            {status === "UNAVAILABLE" ? <p className="st-callout">{UNAVAILABLE_TRANSCRIPT}</p> : null}
+            {status === "ERROR" ? <p className="st-callout" data-tone="red">Recognition stopped with an error. Check that the microphone is allowed for this site, then start again.</p> : null}
+          </div>
           <p className="st-meta">Allow microphone access when the browser asks. Stop ends the current take. Recognition runs in the browser; some browsers, Chrome for one, send the audio to their own speech service to do it.</p>
         </section>
 
@@ -106,10 +112,11 @@ export default function Home() {
               <button type="button" className="as-plain" onClick={clear} disabled={!transcript}>Clear</button>
             </div>
           </div>
-          {note ? <p className="st-meta" role="status">{note}</p> : null}
+          {/* Rendered before the first copy so screen readers announce the result. */}
+          <p className="st-meta st-copy-status" role="status">{note}</p>
         </section>
 
-        <p className="as-note">Method: the Web Speech API (SpeechRecognition). Browser support and microphone permission apply. Nothing is stored; the transcript is gone when you leave the page.</p>
+        <p className="as-note">Method: the Web Speech API (SpeechRecognition). Browser support and microphone permission apply. This app stores and sends nothing; the transcript stays only in this tab until you clear it or close the tab.</p>
       </main>
       <AppFoot source={SOURCE} />
     </div>

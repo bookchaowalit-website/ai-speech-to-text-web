@@ -86,4 +86,54 @@ describe("recorder", () => {
     act(() => last().onerror!());
     expect(host.textContent).toContain("Recognition stopped with an error");
   });
+
+  it("announces the fix, not only the status, when the browser cannot record", () => {
+    mount();
+    const region = $(".st-callouts")!;
+    expect(region.getAttribute("aria-live")).toBe("polite");
+    expect(region.textContent).toBe("");
+    press(button("Start recording"));
+    expect($(".st-callouts")).toBe(region);
+    expect(region.textContent).toContain("not available in this browser");
+  });
+
+  it("renders the copy status region before the first copy", () => {
+    mount();
+    const region = $(".st-copy-status")!;
+    expect(region.getAttribute("role")).toBe("status");
+    expect(region.textContent).toBe("");
+  });
+
+  it("drops the Copied state when the transcript keeps changing", async () => {
+    (window as { SpeechRecognition?: unknown }).SpeechRecognition = FakeRecognition;
+    mount();
+    press(button("Start recording"));
+    act(() => last().onresult!({ results: { length: 1, 0: { 0: { transcript: "one" } } } }));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await act(async () => { button("Copy transcript").click(); });
+    expect($(".st-copy-status")!.textContent).toBe("Transcript copied.");
+    act(() => last().onresult!({ results: { length: 2, 0: { 0: { transcript: "one" } }, 1: { 0: { transcript: " two" } } } }));
+    expect($(".st-copy-status")!.textContent).toBe("");
+  });
+
+  it("does not show a late copy result for a transcript that has since changed", async () => {
+    (window as { SpeechRecognition?: unknown }).SpeechRecognition = FakeRecognition;
+    mount();
+    press(button("Start recording"));
+    act(() => last().onresult!({ results: { length: 1, 0: { 0: { transcript: "one" } } } }));
+    let finish!: () => void;
+    const writeText = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    act(() => { button("Copy transcript").click(); });
+    act(() => last().onresult!({ results: { length: 2, 0: { 0: { transcript: "one" } }, 1: { 0: { transcript: " two" } } } }));
+    await act(async () => { finish(); });
+    expect($(".st-copy-status")!.textContent).toBe("");
+  });
+
+  it("does not promise the transcript is gone when you leave the page", () => {
+    mount();
+    expect(host.textContent).not.toContain("gone when you leave the page");
+    expect($(".as-note")!.textContent).toContain("stores and sends nothing");
+  });
 });

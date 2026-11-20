@@ -12,6 +12,8 @@ html, body { margin: 0; background: var(--as-bg); }
 .st-paper[data-empty="true"] { display: grid; place-content: center; color: var(--as-muted); font-size: 15px; text-align: center; }
 .st-callout { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--as-amber-bg); color: var(--as-fg); font-size: 15px; line-height: 1.55; }
 .st-callout[data-tone="red"] { background: var(--as-red-bg); color: var(--as-red); }
+/* Empty live regions stay in the DOM (so the first message is announced) but must not add a grid gap. */
+.st-card > .st-callouts:empty, .st-card > .st-copy-status:empty { margin-top: -12px; }
 .st-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .st-actions { display: flex; flex-wrap: wrap; gap: 4px; }
 .as-intro h1 { font-size: clamp(30px, 5vw, 44px); }
