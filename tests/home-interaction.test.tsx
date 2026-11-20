@@ -184,4 +184,21 @@ describe("recorder", () => {
     await act(async () => { finish(); });
     expect($(".st-copy-status")!.textContent).toBe("Transcript copied.");
   });
+
+  it("does not confirm a copy of text that a newer result replaced before the re-render", async () => {
+    (window as { SpeechRecognition?: unknown }).SpeechRecognition = FakeRecognition;
+    mount();
+    press(button("Start recording"));
+    act(() => last().onresult!({ results: { length: 1, 0: { 0: { transcript: "one" } } } }));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    const copy = button("Copy transcript");
+    await act(async () => {
+      last().onresult!({ results: { length: 2, 0: { 0: { transcript: "one" } }, 1: { 0: { transcript: " two" } } } });
+      copy.click();
+    });
+    expect(writeText).toHaveBeenCalledWith("one");
+    expect($(".st-paper")!.textContent).toBe("one two");
+    expect($(".st-copy-status")!.textContent).toBe("");
+  });
 });

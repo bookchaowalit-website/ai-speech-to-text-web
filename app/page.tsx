@@ -69,13 +69,15 @@ export default function Home() {
 
   async function copyTranscript() {
     const mine = ++copyEpoch.current;
+    const text = transcript;
     let message = "Transcript copied.";
     try {
-      await navigator.clipboard.writeText(transcript);
+      await navigator.clipboard.writeText(text);
     } catch {
       message = "Copy was blocked by the browser. Select the text and copy it manually.";
     }
-    if (copyEpoch.current === mine) setNote(message);
+    // A result can arrive before React re-renders, so also check the copied text is still the newest one.
+    if (copyEpoch.current === mine && shown.current === text) setNote(message);
   }
 
   function clear() {
