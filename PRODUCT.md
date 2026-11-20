@@ -44,3 +44,7 @@ A portfolio visitor on Chrome or Edge who wants to see one take of live dictatio
 ## Boundaries
 
 - Browser-only apart from the stateless `/api/mcp` route.
+
+## Known limits
+
+- The privacy note says the transcript stays only in this tab, but a successful Copy puts it on the system clipboard, which can keep it after Clear or closing the tab (Codex review 2026-11-20, ai-speech-to-text-web-7236df365e.md).
