@@ -136,4 +136,36 @@ describe("recorder", () => {
     expect(host.textContent).not.toContain("gone when you leave the page");
     expect($(".as-note")!.textContent).toContain("stores and sends nothing");
   });
+
+  it("does not bring an old Copied back when the same words are dictated after Clear", async () => {
+    (window as { SpeechRecognition?: unknown }).SpeechRecognition = FakeRecognition;
+    mount();
+    press(button("Start recording"));
+    const one = { results: { length: 1, 0: { 0: { transcript: "one" } } } };
+    act(() => last().onresult!(one));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await act(async () => { button("Copy transcript").click(); });
+    expect($(".st-copy-status")!.textContent).toBe("Transcript copied.");
+    press(button("Clear"));
+    act(() => last().onresult!(one));
+    expect($(".st-copy-status")!.textContent).toBe("");
+  });
+
+  it("lets only the latest copy request report", async () => {
+    (window as { SpeechRecognition?: unknown }).SpeechRecognition = FakeRecognition;
+    mount();
+    press(button("Start recording"));
+    act(() => last().onresult!({ results: { length: 1, 0: { 0: { transcript: "one" } } } }));
+    const finishers: Array<() => void> = [];
+    const failers: Array<(e: Error) => void> = [];
+    const writeText = vi.fn(() => new Promise<void>((resolve, reject) => { finishers.push(resolve); failers.push(reject); }));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    act(() => { button("Copy transcript").click(); });
+    act(() => { button("Copy transcript").click(); });
+    await act(async () => { finishers[1](); });
+    expect($(".st-copy-status")!.textContent).toBe("Transcript copied.");
+    await act(async () => { failers[0](new Error("late")); });
+    expect($(".st-copy-status")!.textContent).toBe("Transcript copied.");
+  });
 });

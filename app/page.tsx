@@ -25,8 +25,13 @@ const STATUS: Record<Status, { tone: Tone; text: string }> = {
 export default function Home() {
   const [transcript, setTranscript] = useState("");
   const [status, setStatus] = useState<Status>("READY");
-  // A copy result belongs to the transcript that was copied; it is hidden once the transcript changes.
-  const [copied, setCopied] = useState<{ text: string; message: string } | null>(null);
+  const [note, setNote] = useState("");
+  // Bumped by every transcript change and every copy: a change cancels the copy status, and only the latest copy reports.
+  const copyEpoch = useRef(0);
+  const cancelCopy = () => {
+    copyEpoch.current += 1;
+    setNote("");
+  };
   const recognition = useRef<Recognition | null>(null);
   const isListening = status === "LISTENING";
   const words = countWords(transcript);
@@ -40,11 +45,14 @@ export default function Home() {
     const nextRecognition = new Constructor();
     nextRecognition.continuous = true;
     nextRecognition.interimResults = true;
-    nextRecognition.onresult = (event) => setTranscript(joinTranscript(event.results));
+    nextRecognition.onresult = (event) => {
+      cancelCopy();
+      setTranscript(joinTranscript(event.results));
+    };
     nextRecognition.onerror = () => setStatus("ERROR");
     nextRecognition.onend = () => setStatus(statusAfterEnd);
     recognition.current = nextRecognition;
-    setCopied(null);
+    cancelCopy();
     nextRecognition.start();
     setStatus("LISTENING");
   }
@@ -55,19 +63,19 @@ export default function Home() {
   }
 
   async function copyTranscript() {
-    const text = transcript;
+    const mine = ++copyEpoch.current;
+    let message = "Transcript copied.";
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied({ text, message: "Transcript copied." });
+      await navigator.clipboard.writeText(transcript);
     } catch {
-      setCopied({ text, message: "Copy was blocked by the browser. Select the text and copy it manually." });
+      message = "Copy was blocked by the browser. Select the text and copy it manually.";
     }
+    if (copyEpoch.current === mine) setNote(message);
   }
-  const note = copied && copied.text === transcript ? copied.message : "";
 
   function clear() {
     setTranscript("");
-    setCopied(null);
+    cancelCopy();
     if (!isListening) setStatus("READY");
   }
 
