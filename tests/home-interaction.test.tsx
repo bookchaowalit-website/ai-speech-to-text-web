@@ -134,7 +134,7 @@ describe("recorder", () => {
   it("does not promise the transcript is gone when you leave the page", () => {
     mount();
     expect(host.textContent).not.toContain("gone when you leave the page");
-    expect($(".as-note")!.textContent).toContain("does not store or send your audio or transcript");
+    expect($(".as-note")!.textContent).toContain("does not store your audio or transcript");
     expect($(".as-note")!.textContent).not.toContain("sends nothing");
   });
 

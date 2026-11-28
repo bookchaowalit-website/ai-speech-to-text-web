@@ -7,7 +7,7 @@ import "./globals.css";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 const title = "Speech to Text | Bookchaowalit";
-const description = "Turn speech into text with your browser's built-in speech recognition. No API key, nothing stored.";
+const description = "Turn speech into text with your browser's built-in speech recognition. No API key, and the app saves nothing.";
 
 export const metadata: Metadata = {
   title,

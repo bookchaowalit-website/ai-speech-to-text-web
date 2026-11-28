@@ -132,7 +132,7 @@ export default function Home() {
           <p className="st-meta st-copy-status" role="status">{note}</p>
         </section>
 
-        <p className="as-note">Method: the Web Speech API (SpeechRecognition). Browser support and microphone permission apply. This app does not store or send your audio or transcript; the transcript stays only in this tab until you clear it or close the tab.</p>
+        <p className="as-note">Method: the Web Speech API (SpeechRecognition). Browser support and microphone permission apply. This app does not store your audio or transcript or send them to a server of its own; the transcript stays only in this tab until you clear it or close the tab. Your browser may process the audio on its own speech service (Chrome and Edge recognise speech online).</p>
       </main>
       <AppFoot source={SOURCE} />
     </div>
